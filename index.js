@@ -11,31 +11,29 @@ app.use(cors());
 app.use(express.json());
 
 // تهيئة Firebase Admin SDK
-let serviceAccount;
+let db, messaging;
+let firebaseInitialized = false;
 
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     console.log('🔑 Loading Firebase credentials from environment variable...');
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  } else if (require('fs').existsSync('./serviceAccountKey.json')) {
-    console.log('🔑 Loading Firebase credentials from file...');
-    serviceAccount = require('./serviceAccountKey.json');
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+
+    db = admin.firestore();
+    messaging = admin.messaging();
+    firebaseInitialized = true;
+
+    console.log('✅ Firebase Admin initialized successfully');
   } else {
-    throw new Error('❌ No Firebase credentials found! Set FIREBASE_SERVICE_ACCOUNT environment variable.');
+    console.error('❌ FIREBASE_SERVICE_ACCOUNT not found in environment variables');
   }
-
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-
-  const db = admin.firestore();
-  const messaging = admin.messaging();
-
-  console.log('✅ Firebase Admin initialized successfully');
 } catch (error) {
   console.error('❌ Firebase initialization error:', error.message);
-  console.error('Full error:', error);
-  process.exit(1);
+  console.error('Stack:', error.stack);
 }
 
 // الاستماع للرسائل الجديدة
